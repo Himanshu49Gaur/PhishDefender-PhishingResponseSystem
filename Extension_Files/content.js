@@ -8,8 +8,8 @@
 // ──────────────────────────────────────────────────────────
 // MESSAGE LISTENER
 // ──────────────────────────────────────────────────────────
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
     if (message.action === 'extractEmail') {
         try {
             const emailData = extractEmailFromDOM();
@@ -127,6 +127,104 @@ function extractSubject() {
     }
 
     return '';
+}
+
+// ──────────────────────────────────────────────────────────
+// SENDER EXTRACTION
+// ──────────────────────────────────────────────────────────
+
+function extractSender(emailContainer) {
+    const roots = [emailContainer, document].filter(Boolean);
+
+    const emailSelectors = [
+        'span.gD[email]',
+        'span[email].gD',
+        '.gD[email]',
+        'span.gD[data-hovercard-id]',
+        'span[email]',
+        'h3.iw span[email]',
+        'h3 span[email]',
+        '.go .gD',
+        '.gD'
+    ];
+
+    for (const root of roots) {
+        for (const selector of emailSelectors) {
+            const elements = root.querySelectorAll(selector);
+
+            for (const el of elements) {
+                const parsed = parseSenderFromElement(el);
+                if (parsed) return parsed;
+            }
+        }
+    }
+
+    // Fall back to parsing visible sender header text
+    const headerSelectors = [
+        '.gE.iv.gt',
+        '.ha .gD',
+        'h3.iw',
+        '.go'
+    ];
+
+    for (const selector of headerSelectors) {
+        const el = document.querySelector(selector);
+        if (!el) continue;
+
+        const parsed = parseSenderFromText(el.textContent);
+        if (parsed) return parsed;
+    }
+
+    return 'Unknown Sender';
+}
+
+function parseSenderFromElement(el) {
+    if (!el) return null;
+
+    const attrEmail =
+        el.getAttribute('email') ||
+        el.getAttribute('data-hovercard-id');
+
+    const parsedAttr = parseSenderFromText(attrEmail);
+    if (parsedAttr) return parsedAttr;
+
+    const name = el.getAttribute('name') || el.textContent?.trim();
+    if (name) {
+        const parsedText = parseSenderFromText(name);
+        if (parsedText) return parsedText;
+
+        // Visible name only — keep for display when no address is found
+        if (name.length > 1 && !name.includes('@')) {
+            return name;
+        }
+    }
+
+    return null;
+}
+
+function parseSenderFromText(text) {
+    if (!text) return null;
+
+    const cleaned = text.replace(/\s+/g, ' ').trim();
+    if (!cleaned) return null;
+
+    // "Display Name <email@example.com>"
+    const angleMatch = cleaned.match(
+        /<\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\s*>/i
+    );
+    if (angleMatch) {
+        return angleMatch[1].trim();
+    }
+
+    // Plain email address
+    const emailMatch = cleaned.match(
+        /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i
+    );
+    if (emailMatch) {
+        return emailMatch[0].trim();
+    }
+
+    return null;
 }
 
 // ──────────────────────────────────────────────────────────
