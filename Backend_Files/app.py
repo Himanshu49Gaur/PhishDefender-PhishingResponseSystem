@@ -322,10 +322,9 @@ def get_campaigns():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT domain, COUNT(*) as email_count
-        FROM email_iocs
-        GROUP BY domain
-        ORDER BY email_count DESC
+        SELECT campaign_id, domain, campaign_score
+        FROM campaigns
+        ORDER BY campaign_score DESC
     """)
 
     campaigns = []
