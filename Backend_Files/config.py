@@ -1,3 +1,5 @@
+import os
+
 # Flask settings
 FLASK_HOST = "127.0.0.1"
 FLASK_PORT = 5000
@@ -11,12 +13,12 @@ THRESHOLD_SUSPICIOUS = 50
 REPORT_OUTPUT_DIR = "reports"
 
 # VirusTotal
-VIRUSTOTAL_API_KEY = ""
+VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 VIRUSTOTAL_URL_SCAN = "https://www.virustotal.com/api/v3/urls"
 VIRUSTOTAL_IP_SCAN = "https://www.virustotal.com/api/v3/ip_addresses"
 
 # AbuseIPDB
-ABUSEIPDB_API_KEY = ""
+ABUSEIPDB_API_KEY = os.environ.get("ABUSEIPDB_API_KEY", "")
 ABUSEIPDB_URL = "https://api.abuseipdb.com/api/v2/check"
 
 # ML Model Paths
