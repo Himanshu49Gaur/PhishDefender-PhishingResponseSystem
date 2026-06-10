@@ -4,7 +4,8 @@
 # Receives email data from browser extension
 # Orchestrates all modules and returns unified result
 # ============================================================
-
+from ioc_storage import init_db, save_analysis
+from ioc_engine import detect_campaign_from_analysis
 import os
 import json
 import traceback
@@ -31,6 +32,8 @@ from report_generator  import generate_report
 # ──────────────────────────────────────────────────────────
 
 app = Flask(__name__)
+
+init_db()
 
 # Allow requests from Chrome extension
 CORS(app, resources={
@@ -149,6 +152,16 @@ def analyze():
             threat_intel,
             ml_scores
         )
+
+        save_analysis(
+          parsed_email,
+          rules_result
+        )
+
+        campaign_result = detect_campaign_from_analysis(
+            parsed_email,
+            rules_result
+        )
         print(f"  Verdict     : {rules_result['verdict'].upper()}")
         print(f"  Score       : {rules_result['total_score']}/100")
         print(
@@ -178,7 +191,8 @@ def analyze():
             ml_scores,
             threat_intel,
             rules_result,
-            report_path
+            report_path,
+            campaign_result
         )
 
         print(f"[app] Analysis complete — {rules_result['verdict'].upper()}")
@@ -194,6 +208,16 @@ def analyze():
             'detail'    : str(e)
         }), 500
 
+@app.route('/metrics', methods=['GET'])
+def metrics():
+
+    from metrics import scan_metrics
+
+    return jsonify({
+        "urls_scanned": scan_metrics["urls_scanned"],
+        "cache_hits": scan_metrics["cache_hits"],
+        "cache_misses": scan_metrics["cache_misses"]
+    })
 
 @app.route('/report/<filename>', methods=['GET'])
 def download_report(filename):
@@ -290,6 +314,108 @@ print(f"[app] Reports directory ready : {REPORT_OUTPUT_DIR}")
 print(f"[app] Server starting on      : http://{FLASK_HOST}:{FLASK_PORT}")
 print("=" * 55)
 
+@app.route('/campaigns', methods=['GET'])
+def get_campaigns():
+    import sqlite3
+
+    conn = sqlite3.connect("iocs.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT campaign_id, domain, campaign_score
+        FROM campaigns
+        ORDER BY campaign_score DESC
+    """)
+
+    campaigns = []
+
+    for campaign_id, domain, score in cursor.fetchall():
+        campaigns.append({
+            "campaign_id": campaign_id,
+            "domain": domain,
+            "campaign_score": score
+        })
+
+    conn.close()
+
+    return jsonify(campaigns), 200
+
+@app.route('/campaign/<domain>', methods=['GET'])
+def campaign_details(domain):
+    import sqlite3
+
+    conn = sqlite3.connect("iocs.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT sender,
+               domain,
+               urls,
+               verdict,
+               threat_score,
+               timestamp
+        FROM email_iocs
+        WHERE domain = ?
+    """, (domain,))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    emails = []
+
+    for row in rows:
+        emails.append({
+            "sender": row[0],
+            "domain": row[1],
+            "urls": row[2],
+            "verdict": row[3],
+            "threat_score": row[4],
+            "timestamp": row[5]
+        })
+
+    return jsonify({
+        "domain": domain,
+        "email_count": len(emails),
+        "emails": emails
+    }), 200
+
+@app.route('/campaign/<domain>/graph', methods=['GET'])
+def campaign_graph(domain):
+    import sqlite3
+    from campaign_graph import generate_campaign_graph
+    from flask import send_file
+
+    conn = sqlite3.connect("iocs.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT sender
+        FROM email_iocs
+        WHERE domain = ?
+    """, (domain,))
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    emails = []
+
+    for row in rows:
+        emails.append({
+            "sender": row[0]
+        })
+
+    graph_file = generate_campaign_graph(
+        domain,
+        emails
+    )
+
+    return send_file(
+        graph_file,
+        mimetype='image/png'
+    )
+
 # ──────────────────────────────────────────────────────────
 # RESPONSE BUILDER
 # ──────────────────────────────────────────────────────────
@@ -299,7 +425,8 @@ def build_response(
     ml_scores,
     threat_intel,
     rules_result,
-    report_path
+    report_path,
+    campaign_result
 ):
     """
     Builds the final JSON response sent back to
@@ -318,6 +445,7 @@ def build_response(
         # ── Core result ───────────────────────────────────
         'verdict'               : verdict,
         'threat_score'          : score,
+        'campaign': campaign_result,
         'summary'               : rules_result.get('summary', ''),
         'timestamp'             : datetime.now().isoformat(),
 

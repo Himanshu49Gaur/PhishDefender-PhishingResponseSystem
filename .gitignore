@@ -208,3 +208,6 @@ __marimo__/
 
 # Environment variables - never commit this
 .env
+
+*.db
+*.png

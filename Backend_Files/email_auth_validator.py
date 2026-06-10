@@ -1,5 +1,12 @@
 def validate_email_auth(headers):
 
+    if not headers or not isinstance(headers, dict):
+        return {
+            "spf_pass": False,
+            "dkim_pass": False,
+            "dmarc_pass": False
+        }
+
     auth_results = headers.get(
         "Authentication-Results",
         ""

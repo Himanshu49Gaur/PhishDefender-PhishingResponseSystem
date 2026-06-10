@@ -27,6 +27,14 @@ from transformer_classifier import (
     predict_transformer
 )
 
+from xai_engine import (
+    explain_keywords,
+    explain_url_risk,
+    build_confidence_breakdown,
+    explain_model_features,
+    generate_shap_explanation
+)
+
 # ──────────────────────────────────────────────────────────
 # MODEL LOADER
 # Loaded once at startup — not on every request
@@ -282,6 +290,113 @@ def run_ml_classifier(parsed_email):
         results
     )
 
+        # ── XAI Explanations ─────────────────────────
+
+    subject = parsed_email.get(
+        'subject',
+        ''
+    )
+
+    body = parsed_email.get(
+        'body',
+        ''
+    )
+
+    keyword_explanation = explain_keywords(
+        subject,
+        body,
+        PHISHING_KEYWORDS
+    )
+
+    url_risks = []
+
+    urls = parsed_email.get(
+        'urls',
+        []
+    )
+
+    if urls:
+        try:
+            url_features = extract_url_features(
+                urls[0]
+            )
+
+            url_risks = explain_url_risk(
+                url_features
+            )
+
+        except Exception:
+            pass
+
+    # ── SHAP Explanation ───────────────────────
+
+    shap_explanation = {
+        "status": "unavailable"
+    }
+
+    try:
+
+        feature_vector = get_email_feature_vector(
+            parsed_email
+        )
+
+        feature_names = (
+            _email_model
+            .feature_name()
+        )
+
+        shap_explanation = (
+            generate_shap_explanation(
+                _email_model,
+                feature_vector,
+                feature_names
+            )
+        )
+
+    except Exception as e:
+
+         shap_explanation = {
+            "error": str(e)
+        }
+
+    results['explanation'] = {
+
+        'keywords': keyword_explanation,
+
+        'url_risks': url_risks,
+
+        'feature_importance':
+            explain_model_features(
+                _email_model,
+                _tfidf
+            ),
+
+        'shap':
+            shap_explanation,
+
+        'confidence_breakdown':
+            build_confidence_breakdown(
+                results[
+                    'email_phishing_probability'
+                ],
+                results[
+                    'url_phishing_probability'
+                ],
+                results[
+                    'combined_probability'
+                ]
+            )
+    }
+
+    print(
+        f"[ml_classifier] "
+        f"Email prob: {results['email_phishing_probability']:.4f} | "
+        f"URL prob: {results['url_phishing_probability']:.4f} | "
+        f"Combined: {results['combined_probability']:.4f}"
+    )
+
+    return results
+   
     print(
         f"[ml_classifier] "
         f"Email: {results['email_phishing_probability']:.4f} | "
@@ -326,6 +441,52 @@ def predict_email(parsed_email):
     # LightGBM returns array — extract scalar
     return float(prob[0]) if hasattr(prob, '__len__') else float(prob)
 
+def get_email_feature_vector(parsed_email):
+
+    subject = parsed_email.get(
+        'subject',
+        ''
+    )
+
+    body = parsed_email.get(
+        'body',
+        ''
+    )
+
+    cleaned_text = clean_text_for_ml(
+        subject,
+        body
+    )
+
+    tfidf_features = (
+        _tfidf
+        .transform([cleaned_text])
+        .astype('float32')
+    )
+
+    hand_features = (
+        extract_hand_features(
+            subject,
+            body,
+            parsed_email
+        )
+    )
+
+    hand_sparse = sp.csr_matrix(
+        np.array(
+            hand_features
+        ).reshape(1, -1)
+        .astype('float32')
+    )
+
+    combined = sp.hstack(
+        [
+            tfidf_features,
+            hand_sparse
+        ]
+    ).astype('float32')
+
+    return combined
 
 def clean_text_for_ml(subject, body):
     """

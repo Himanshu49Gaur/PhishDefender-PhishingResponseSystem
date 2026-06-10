@@ -9,6 +9,7 @@ import re
 import time
 import base64
 import requests
+
 from config import (
     VIRUSTOTAL_API_KEY,
     VIRUSTOTAL_URL_SCAN,
@@ -49,9 +50,26 @@ def run_threat_intelligence(parsed_email):
     urls    = parsed_email.get('urls', [])
     headers = parsed_email.get('headers', {})
 
+    # URL deduplication
+    unique_urls = []
+    seen_urls = set()
+
+    for url_obj in urls:
+        raw_url = url_obj.get('raw', '')
+
+        if raw_url and raw_url not in seen_urls:
+           seen_urls.add(raw_url)
+           unique_urls.append(url_obj)
+
+    print(
+        f"[threat_intel] URLs: {len(urls)} -> Unique: {len(unique_urls)}"
+    )
+
+    
+
     # ── Scan URLs ─────────────────────────────────────────
     if urls:
-        urls_to_scan = urls[:MAX_URLS_TO_SCAN]
+        urls_to_scan = unique_urls[:MAX_URLS_TO_SCAN]
         print(f"[threat_intel] Scanning {len(urls_to_scan)} URL(s)...")
 
         for url_obj in urls_to_scan:
