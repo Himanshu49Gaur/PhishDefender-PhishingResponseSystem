@@ -23,6 +23,10 @@ from config import (
     PHISHING_KEYWORDS,
     SUBJECT_KEYWORDS
 )
+from transformer_classifier import (
+    predict_transformer
+)
+
 from xai_engine import (
     explain_keywords,
     explain_url_risk,
@@ -103,67 +107,188 @@ def load_models():
 # MAIN ENTRY POINT
 # ──────────────────────────────────────────────────────────
 
+
 def run_ml_classifier(parsed_email):
     """
     Main function called by app.py
     Accepts parsed email object from email_parser.py
-    Returns ML scores for both email and URL models
+    Returns ML scores for email, transformer and URL models
     """
+
     if _email_model is None:
         raise RuntimeError(
             "Models not loaded. Call load_models() first."
         )
 
     results = {
-        'email_phishing_probability' : 0.0,
-        'url_phishing_probability'   : 0.0,
-        'email_prediction'           : 0,
-        'url_prediction'             : 0,
-        'combined_probability'       : 0.0,
-        'combined_prediction'        : 0,
-        'email_model_used'           : True,
-        'url_model_used'             : False,
-        'model_info'                 : {},
-        'error'                      : None
+        'email_phishing_probability': 0.0,
+        'transformer_probability': 0.0,
+        'ensemble_probability': 0.0,
+        'url_phishing_probability': 0.0,
+        'email_prediction': 0,
+        'url_prediction': 0,
+        'combined_probability': 0.0,
+        'combined_prediction': 0,
+        'email_model_used': True,
+        'url_model_used': False,
+        'model_info': {},
+        'error': None
     }
 
-    # ── Run email model ───────────────────────────────────
+    # ── Run Email + Transformer Models ──────────────────────
     try:
-        email_prob = predict_email(parsed_email)
-        results['email_phishing_probability'] = round(email_prob, 4)
-        results['email_prediction'] = int(email_prob >= ML_THRESHOLD)
+
+        email_prob = predict_email(
+            parsed_email
+        )
+
+        subject = parsed_email.get(
+            'subject',
+            ''
+        )
+
+        body = parsed_email.get(
+            'body',
+            ''
+        )
+
+        transformer_text = (
+            subject + ' ' + body
+        )
+
+        transformer_prob = (
+            predict_transformer(
+                transformer_text
+            )
+        )
+
+        results[
+            'email_phishing_probability'
+        ] = round(
+            email_prob,
+            4
+        )
+
+        results[
+            'transformer_probability'
+        ] = round(
+            transformer_prob,
+            4
+        )
+
+        results[
+            'email_prediction'
+        ] = int(
+            email_prob >= ML_THRESHOLD
+        )
+
+        # Ensemble score
+        ensemble_prob = (
+            0.7 * email_prob +
+            0.3 * transformer_prob
+        )
+
+        results[
+            'ensemble_probability'
+        ] = round(
+            ensemble_prob,
+            4
+        )
+
     except Exception as e:
-        results['error'] = f"Email model error: {str(e)}"
-        print(f"[ml_classifier] Email model error: {e}")
 
-    # ── Run URL model if URLs exist ────────────────────────
-    urls = parsed_email.get('urls', [])
+        results[
+            'error'
+        ] = (
+            f"Email model error: {str(e)}"
+        )
+
+        print(
+            f"[ml_classifier] Email model error: {e}"
+        )
+
+    # ── Run URL Model ───────────────────────────────────────
+    urls = parsed_email.get(
+        'urls',
+        []
+    )
+
     if urls:
+
         try:
-            url_prob = predict_url(urls[0])
-            results['url_phishing_probability'] = round(url_prob, 4)
-            results['url_prediction'] = int(url_prob >= ML_THRESHOLD)
-            results['url_model_used'] = True
+
+            url_prob = predict_url(
+                urls[0]
+            )
+
+            results[
+                'url_phishing_probability'
+            ] = round(
+                url_prob,
+                4
+            )
+
+            results[
+                'url_prediction'
+            ] = int(
+                url_prob >= ML_THRESHOLD
+            )
+
+            results[
+                'url_model_used'
+            ] = True
+
         except Exception as e:
-            results['error'] = f"URL model error: {str(e)}"
-            print(f"[ml_classifier] URL model error: {e}")
+
+            results[
+                'error'
+            ] = (
+                f"URL model error: {str(e)}"
+            )
+
+            print(
+                f"[ml_classifier] URL model error: {e}"
+            )
+
     else:
-        # No URLs — URL model not applicable
-        results['url_phishing_probability'] = 0.0
-        results['url_model_used']           = False
 
-    # ── Combine scores ────────────────────────────────────
-    results['combined_probability'] = calculate_combined_score(
-        results['email_phishing_probability'],
-        results['url_phishing_probability'],
-        results['url_model_used']
-    )
-    results['combined_prediction'] = int(
-        results['combined_probability'] >= ML_THRESHOLD
+        results[
+            'url_phishing_probability'
+        ] = 0.0
+
+        results[
+            'url_model_used'
+        ] = False
+
+    # ── Existing Combined Score ─────────────────────────────
+    results[
+        'combined_probability'
+    ] = calculate_combined_score(
+        results[
+            'email_phishing_probability'
+        ],
+        results[
+            'url_phishing_probability'
+        ],
+        results[
+            'url_model_used'
+        ]
     )
 
-    # ── Add model info ────────────────────────────────────
-    results['model_info'] = build_model_info(results)
+    results[
+        'combined_prediction'
+    ] = int(
+        results[
+            'combined_probability'
+        ] >= ML_THRESHOLD
+    )
+
+    # ── Model Metadata ──────────────────────────────────────
+    results[
+        'model_info'
+    ] = build_model_info(
+        results
+    )
 
         # ── XAI Explanations ─────────────────────────
 
@@ -274,8 +399,10 @@ def run_ml_classifier(parsed_email):
    
     print(
         f"[ml_classifier] "
-        f"Email prob: {results['email_phishing_probability']:.4f} | "
-        f"URL prob: {results['url_phishing_probability']:.4f} | "
+        f"Email: {results['email_phishing_probability']:.4f} | "
+        f"Transformer: {results['transformer_probability']:.4f} | "
+        f"Ensemble: {results['ensemble_probability']:.4f} | "
+        f"URL: {results['url_phishing_probability']:.4f} | "
         f"Combined: {results['combined_probability']:.4f}"
     )
 
