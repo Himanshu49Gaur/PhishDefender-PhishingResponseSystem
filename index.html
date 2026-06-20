@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhishDefender — AI Phishing Detection</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <a class="nav-logo" href="#">⬡ PhishDefender</a>
+        <ul class="nav-links">
+            <li><a href="#demo">Live Demo</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#ml">ML Pipeline</a></li>
+            <li><a href="#install">Install</a></li>
+        </ul>
+        <a class="nav-cta" href="https://github.com/Himanshu49Gaur/PhishDefender-PhishingResponseSystem"
+            target="_blank">GitHub ↗</a>
+    </nav>
+
+    <!-- HERO -->
+    <section id="top" class="hero">
+        <div class="hero-grid"></div>
+        <div class="hero-badge"><span class="badge-dot"></span>Portfolio Project · Cybersecurity + ML</div>
+        <h1>Defend your inbox with<br><span>AI-powered</span> phishing detection</h1>
+        <p class="hero-sub">PhishDefender combines LightGBM machine learning, VirusTotal, and AbuseIPDB to detect
+            phishing emails inside Gmail in real-time — directly as a Chrome Extension.</p>
+        <div class="hero-btns">
+            <a class="btn-primary" href="https://github.com/Himanshu49Gaur/PhishDefender-PhishingResponseSystem"
+                target="_blank">⬡ View on GitHub</a>
+            <a class="btn-outline" href="#demo">Watch the demo →</a>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-num counter" data-target="98.9">0</div>
+                <div class="hero-stat-label">F1 SCORE %</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num counter" data-target="164">0</div>
+                <div class="hero-stat-label">K TRAINING SAMPLES</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num counter" data-target="5">0</div>
+                <div class="hero-stat-label">DETECTION LAYERS</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-num counter" data-target="70">0</div>
+                <div class="hero-stat-label">+ VIRUS ENGINES</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LIVE DEMO SIMULATOR -->
+    <section id="demo">
+        <div class="section-head reveal">
+            <div class="section-label">// Demo coming soon</div>
+            <div class="section-title">Demo</div>
+            <p class="section-sub"></p>
+        </div>
+
+
+    </section>
+
+    <!-- ARCHITECTURE / PIPELINE -->
+    <section id="architecture">
+        <div class="section-head reveal">
+            <div class="section-label">// system design</div>
+            <div class="section-title">Detection Pipeline</div>
+            <p class="section-sub">Five independent layers combine into a single weighted threat score. Click each step
+                to expand.</p>
+        </div>
+        <div class="pipeline reveal" id="pipeline">
+            <div class="pipe-step" onclick="toggleStep(this, 0)">
+                <div class="pipe-num-col">
+                    <div class="pipe-num">01</div>
+                    <div class="pipe-line"></div>
+                </div>
+                <div class="pipe-content">
+                    <div class="pipe-title">Gmail DOM Extraction</div>
+                    <div class="pipe-desc">content.js reads the open email from Gmail's dynamic SPA DOM using
+                        MutationObserver and multiple CSS selector fallbacks.</div>
+                    <div class="pipe-tags"><span class="pipe-tag">JavaScript</span><span class="pipe-tag">MV3
+                            Extension</span><span class="pipe-tag">MutationObserver</span></div>
+                    <div class="pipe-detail">
+                        <p>Gmail wraps all outbound links as <code>google.com/url?q=...</code> redirects. The content
+                            script decodes these using URLSearchParams to expose the real destination before analysis.
+                            DOM extraction is resilient to Gmail UI updates via ordered selector fallbacks.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="pipe-step" onclick="toggleStep(this, 1)">
+                <div class="pipe-num-col">
+                    <div class="pipe-num">02</div>
+                    <div class="pipe-line"></div>
+                </div>
+                <div class="pipe-content">
+                    <div class="pipe-title">Email Header Analysis</div>
+                    <div class="pipe-desc">Checks SPF, DKIM, DMARC authentication results and Reply-To mismatches. All
+                        three failures together trigger a +15 bonus score.</div>
+                    <div class="pipe-tags"><span class="pipe-tag">SPF</span><span class="pipe-tag">DKIM</span><span
+                            class="pipe-tag">DMARC</span><span class="pipe-tag">email_parser.py</span></div>
+                    <div class="pipe-detail">
+                        <p>Header analysis can yield up to 53 points. Individual auth failures score 10 pts each —
+                            sufficient to flag but not block. The combined "all three fail" bonus reflects that this
+                            pattern is a much stronger signal than any single failure, as many legitimate small
+                            businesses also fail individual checks.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="pipe-step" onclick="toggleStep(this, 2)">
+                <div class="pipe-num-col">
+                    <div class="pipe-num">03</div>
+                    <div class="pipe-line"></div>
+                </div>
+                <div class="pipe-content">
+                    <div class="pipe-title">LightGBM ML Classifier</div>
+                    <div class="pipe-desc">Two GPU-trained models — one for email text (TF-IDF + 13 hand-crafted
+                        features) and one for URL structural features (50 columns).</div>
+                    <div class="pipe-tags"><span class="pipe-tag">LightGBM</span><span
+                            class="pipe-tag">TF-IDF</span><span class="pipe-tag">98.9% F1</span><span
+                            class="pipe-tag">164K samples</span></div>
+                    <div class="pipe-detail">
+                        <p>Email model uses a 5,013-wide sparse matrix: 5,000 TF-IDF bigram features stacked with 13
+                            engineered signals (URL count, capital ratio, exclamation density, keyword hits…). URL model
+                            uses 50 structural features including 3 interaction terms. Combined score is 60% email + 40%
+                            URL.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="pipe-step" onclick="toggleStep(this, 3)">
+                <div class="pipe-num-col">
+                    <div class="pipe-num">04</div>
+                    <div class="pipe-line"></div>
+                </div>
+                <div class="pipe-content">
+                    <div class="pipe-title">Threat Intelligence APIs</div>
+                    <div class="pipe-desc">VirusTotal scans each URL across 70+ antivirus engines. AbuseIPDB checks
+                        sender IP reputation and Tor exit node status.</div>
+                    <div class="pipe-tags"><span class="pipe-tag">VirusTotal</span><span
+                            class="pipe-tag">AbuseIPDB</span><span class="pipe-tag">threat_intel.py</span></div>
+                    <div class="pipe-detail">
+                        <p>VirusTotal uses an async polling flow: submit URL → receive analysis ID → poll until status =
+                            "completed". Free tier allows 4 req/min — a 15s sleep between URL scans respects this. A
+                            confirmed malicious URL alone contributes 30 points, making it nearly decisive.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="pipe-step" onclick="toggleStep(this, 4)">
+                <div class="pipe-num-col">
+                    <div class="pipe-num">05</div>
+                    <div class="pipe-line"></div>
+                </div>
+                <div class="pipe-content">
+                    <div class="pipe-title">Rules Engine + Report</div>
+                    <div class="pipe-desc">Weighted signals sum to a 0–100 threat score. Malicious or suspicious emails
+                        trigger a PDF SOC-style incident report with full IOC list.</div>
+                    <div class="pipe-tags"><span class="pipe-tag">rules_engine.py</span><span class="pipe-tag">ReportLab
+                            PDF</span><span class="pipe-tag">IOC extraction</span></div>
+                    <div class="pipe-detail">
+                        <p>The rules engine makes signal combinations explicit and auditable — unlike pure ML verdicts.
+                            The PDF report mirrors real SOC incident report structure: verdict banner, IOC table, ML
+                            confidence scores, triggered rule trace, and recommended actions. Only generated for
+                            malicious/suspicious verdicts.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="section-head reveal">
+            <div class="section-label">// capabilities</div>
+            <div class="section-title">Core Features</div>
+        </div>
+        <div class="feat-grid reveal">
+            <div class="feat-card">
+                <span class="feat-icon">🧠</span>
+                <div class="feat-title">Dual ML Classifiers</div>
+                <div class="feat-desc">Separate LightGBM models for email content and URL structure, combined with
+                    weighted averaging for a richer signal.</div>
+                <span class="feat-chip">98.9% F1</span>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">🔗</span>
+                <div class="feat-title">URL Structural Analysis</div>
+                <div class="feat-desc">50 pre-engineered URL features including subdomain depth, HTTPS status,
+                    IP-as-domain, sensitive keywords, and 3 interaction terms.</div>
+                <span class="feat-chip">50 features</span>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">🛡️</span>
+                <div class="feat-title">Real-Time Threat Intel</div>
+                <div class="feat-desc">VirusTotal scans URLs across 70+ AV engines. AbuseIPDB checks IP abuse confidence
+                    and Tor exit node status.</div>
+                <span class="feat-chip">Live APIs</span>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">📄</span>
+                <div class="feat-title">SOC Incident Reports</div>
+                <div class="feat-desc">Auto-generated PDF reports with IOC list, triggered rule trace, ML confidence
+                    breakdown, and recommended actions — structured for SOC analysts.</div>
+                <span class="feat-chip">ReportLab PDF</span>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">🧩</span>
+                <div class="feat-title">Chrome Extension (MV3)</div>
+                <div class="feat-desc">Manifest V3 service worker architecture. MutationObserver for auto-scan on email
+                    open. Zero ML logic in the extension — all intelligence runs server-side.</div>
+                <span class="feat-chip">Gmail Native</span>
+            </div>
+            <div class="feat-card">
+                <span class="feat-icon">⚖️</span>
+                <div class="feat-title">Auditable Rules Engine</div>
+                <div class="feat-desc">Weighted scoring over 17 explicit rules makes every verdict explainable. No
+                    black-box decisions — all triggered rules are shown with their weights.</div>
+                <span class="feat-chip">0–100 score</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ML PIPELINE METRICS -->
+    <section id="ml">
+        <div class="section-head reveal">
+            <div class="section-label">// model performance</div>
+            <div class="section-title">ML Pipeline Results</div>
+            <p class="section-sub">GPU-trained on Kaggle T4 x2. Both LightGBM classifiers outperform XGBoost and
+                Logistic Regression baselines.</p>
+        </div>
+        <div class="ml-grid reveal">
+            <div class="ml-card">
+                <div class="ml-card-title">EMAIL_MODEL · LightGBM</div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">F1 Score</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:98.9%"></div>
+                    </div>
+                    <div class="ml-metric-val">0.989</div>
+                </div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">Accuracy</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:98.9%"></div>
+                    </div>
+                    <div class="ml-metric-val">98.9%</div>
+                </div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">ROC-AUC</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:99.6%"></div>
+                    </div>
+                    <div class="ml-metric-val">0.996</div>
+                </div>
+                <div style="margin-top:1rem; font-size:0.75rem; color:var(--text-dim);">Trained on 164,972 emails ·
+                    5,013 features · TF-IDF bigrams + 13 engineered signals</div>
+            </div>
+            <div class="ml-card">
+                <div class="ml-card-title">URL_MODEL · LightGBM</div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">F1 Score</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:98.86%"></div>
+                    </div>
+                    <div class="ml-metric-val">0.989</div>
+                </div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">Accuracy</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:98.9%"></div>
+                    </div>
+                    <div class="ml-metric-val">98.9%</div>
+                </div>
+                <div class="ml-metric-row">
+                    <div class="ml-metric-name">ROC-AUC</div>
+                    <div class="ml-metric-bar-wrap">
+                        <div class="ml-metric-bar" style="width:99.4%"></div>
+                    </div>
+                    <div class="ml-metric-val">0.994</div>
+                </div>
+                <div style="margin-top:1rem; font-size:0.75rem; color:var(--text-dim);">Trained on 9,581 URLs · 50
+                    structural features · 3 interaction terms</div>
+            </div>
+            <div class="ml-card">
+                <div class="ml-card-title">MODEL COMPARISON · Email Dataset</div>
+                <div class="ml-compare-grid">
+                    <div class="ml-compare-cell">
+                        <div class="ml-compare-model">LightGBM</div>
+                        <div class="ml-compare-score">0.989</div>
+                        <div class="ml-compare-label">F1 · Winner ⬡</div>
+                    </div>
+                    <div class="ml-compare-cell">
+                        <div class="ml-compare-model">XGBoost</div>
+                        <div class="ml-compare-score second">0.967</div>
+                        <div class="ml-compare-label">F1</div>
+                    </div>
+                    <div class="ml-compare-cell">
+                        <div class="ml-compare-model">Random Forest</div>
+                        <div class="ml-compare-score second">0.951</div>
+                        <div class="ml-compare-label">F1</div>
+                    </div>
+                    <div class="ml-compare-cell">
+                        <div class="ml-compare-model">Logistic Reg.</div>
+                        <div class="ml-compare-score second">0.912</div>
+                        <div class="ml-compare-label">F1 · Baseline</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ml-card">
+                <div class="ml-card-title">TRAINING DATASETS</div>
+                <div style="font-size:0.78rem; color:var(--text-muted); line-height:2;">
+                    <div
+                        style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:4px 0;">
+                        <span>CEAS_08.csv</span><span style="font-family:var(--mono); color:var(--sky);">39,154</span>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:4px 0;">
+                        <span>Enron.csv</span><span style="font-family:var(--mono); color:var(--sky);">29,767</span>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:4px 0;">
+                        <span>phishing_email.csv</span><span
+                            style="font-family:var(--mono); color:var(--sky);">82,486</span>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border); padding:4px 0;">
+                        <span>SpamAssasin + others</span><span
+                            style="font-family:var(--mono); color:var(--sky);">13,565</span>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; padding:4px 0; font-weight:600; color:var(--text);">
+                        <span>Total (after dedup)</span><span
+                            style="font-family:var(--mono); color:var(--sky);">164,972</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TECH STACK -->
+    <section id="stack">
+        <div class="section-head reveal">
+            <div class="section-label">// tech stack</div>
+            <div class="section-title">Built With</div>
+        </div>
+        <div class="stack-grid reveal">
+            <div class="stack-item"><span class="stack-icon">🐍</span>
+                <div>
+                    <div class="stack-name">Python 3.10+</div>
+                    <div class="stack-role">Core backend</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">⚗️</span>
+                <div>
+                    <div class="stack-name">Flask</div>
+                    <div class="stack-role">REST API server</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">⚡</span>
+                <div>
+                    <div class="stack-name">LightGBM</div>
+                    <div class="stack-role">ML classifier (GPU)</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">🔢</span>
+                <div>
+                    <div class="stack-name">scikit-learn</div>
+                    <div class="stack-role">TF-IDF / scaler</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">🧩</span>
+                <div>
+                    <div class="stack-name">Chrome MV3</div>
+                    <div class="stack-role">Extension runtime</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">🔍</span>
+                <div>
+                    <div class="stack-name">VirusTotal API</div>
+                    <div class="stack-role">URL threat intel</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">🛡️</span>
+                <div>
+                    <div class="stack-name">AbuseIPDB API</div>
+                    <div class="stack-role">IP reputation</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">📄</span>
+                <div>
+                    <div class="stack-name">ReportLab</div>
+                    <div class="stack-role">PDF generation</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">🍜</span>
+                <div>
+                    <div class="stack-name">BeautifulSoup4</div>
+                    <div class="stack-role">HTML parsing</div>
+                </div>
+            </div>
+            <div class="stack-item"><span class="stack-icon">📊</span>
+                <div>
+                    <div class="stack-name">XGBoost</div>
+                    <div class="stack-role">Comparison model</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INSTALL -->
+    <!-- <section id="install">
+        <div class="section-head reveal">
+            <div class="section-label">// quick start</div>
+            <div class="section-title">Get Running in 5 Steps</div>
+        </div>
+        <div class="install-steps reveal">
+            <div class="install-step">
+                <div class="install-step-num">STEP 01</div>
+                <div class="install-step-title">Clone the repo</div>
+                <div class="install-code">git clone https://github.com/Himanshu49Gaur/
+                    PhishDefender-PhishingResponseSystem.git
+                    cd phishing-detector</div>
+            </div>
+            <div class="install-step">
+                <div class="install-step-num">STEP 02</div>
+                <div class="install-step-title">Install dependencies</div>
+                <div class="install-code">pip install -r requirements.txt</div>
+            </div>
+            <div class="install-step">
+                <div class="install-step-num">STEP 03</div>
+                <div class="install-step-title">Add API keys</div>
+                <div class="install-code">cp .env.example .env
+                    # Edit .env:
+                    # VIRUSTOTAL_API_KEY=...
+                    # ABUSEIPDB_API_KEY=...</div>
+            </div>
+            <div class="install-step">
+                <div class="install-step-num">STEP 04</div>
+                <div class="install-step-title">Start the backend</div>
+                <div class="install-code">python app.py
+                    # → http://127.0.0.1:5000</div>
+            </div>
+            <div class="install-step">
+                <div class="install-step-num">STEP 05</div>
+                <div class="install-step-title">Load Chrome extension</div>
+                <div class="install-code">chrome://extensions/
+                    → Enable Developer Mode
+                    → Load Unpacked
+                    → Select Extension_Files/</div>
+            </div>
+        </div>
+    </section> -->
+    <!-- INSTALL -->
+    <section id="install">
+        <div class="section-head reveal">
+            <div class="section-label">// quick start</div>
+            <div class="section-title">Get Running in 5 Steps</div>
+        </div>
+
+        <div class="install-steps reveal">
+
+            <!-- STEP 01 -->
+            <div class="install-step step-lg">
+                <div class="install-step-num">STEP 01</div>
+                <div class="install-step-title">Clone the repo</div>
+
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <pre class="terminal-code">git clone https://github.com/Himanshu49Gaur/PhishDefender-PhishingResponseSystem.git
+cd PhishDefender-PhishingResponseSystem</pre>
+
+                    <button class="copy-btn">Copy</button>
+                </div>
+            </div>
+
+            <!-- STEP 02 -->
+            <div class="install-step step-sm">
+                <div class="install-step-num">STEP 02</div>
+                <div class="install-step-title">Install dependencies</div>
+
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <pre class="terminal-code">pip install -r requirements.txt</pre>
+
+                    <button class="copy-btn">Copy</button>
+                </div>
+            </div>
+
+            <!-- STEP 03 -->
+            <div class="install-step step-sm">
+                <div class="install-step-num">STEP 03</div>
+                <div class="install-step-title">Add API keys</div>
+
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <pre class="terminal-code">cp .env.example .env
+# Edit .env:
+# VIRUSTOTAL_API_KEY=...
+# ABUSEIPDB_API_KEY=...</pre>
+
+                    <button class="copy-btn">Copy</button>
+                </div>
+            </div>
+
+            <!-- STEP 04 -->
+            <div class="install-step step-sm">
+                <div class="install-step-num">STEP 04</div>
+                <div class="install-step-title">Start the backend</div>
+
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <pre class="terminal-code">python app.py
+ → http://127.0.0.1:5000</pre>
+
+                    <button class="copy-btn">Copy</button>
+                </div>
+            </div>
+
+            <!-- STEP 05 -->
+            <div class="install-step step-sm">
+                <div class="install-step-num">STEP 05</div>
+                <div class="install-step-title">Load Chrome extension</div>
+
+                <div class="terminal">
+                    <div class="terminal-bar">
+                        <span></span><span></span><span></span>
+                    </div>
+
+                    <pre class="terminal-code">chrome://extensions/
+                            → Enable Developer Mode
+                            → Load Unpacked
+                            → Select Extension_Files/</pre>
+
+                    <button class="copy-btn">Copy</button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-band">
+            <div class="footer-name">Himanshu Gaur · VIT Bhopal 2027</div>
+            <div class="footer-subtitle  footer-links"><a href="https://github.com/stargalax" target="_blank">Website
+                    made by Nikitha</a></div>
+        </div>
+
+        <div class="footer-links">
+            <a href="https://github.com/Himanshu49Gaur" target="_blank">GitHub</a>
+            <a href="https://linkedin.com/in/himanshu-gaur-305006282" target="_blank">LinkedIn</a>
+            <a href="https://github.com/Himanshu49Gaur/PhishDefender-PhishingResponseSystem"
+                target="_blank">Repository</a>
+        </div>
+        <div class="footer-mit">MIT License · 2025</div>
+    </footer>
+    <button id="backToTop" aria-label="Back to top">
+        ↑
+    </button>
+
+    <script>
+
+
+
+        /* ─── PIPELINE STEPS ─────────────────────── */
+        function toggleStep(el, idx) {
+            const steps = document.querySelectorAll('.pipe-step');
+            steps.forEach((s, i) => {
+                if (i === idx) s.classList.toggle('active');
+                else s.classList.remove('active');
+            });
+        }
+
+        /* ─── COUNTER ANIMATION ──────────────────── */
+        function animateCounter(el) {
+            const target = parseFloat(el.dataset.target);
+            const isDecimal = target % 1 !== 0;
+            const duration = 1400;
+            const start = performance.now();
+            function step(now) {
+                const p = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - p, 3);
+                const val = target * eased;
+                el.textContent = isDecimal ? val.toFixed(1) : Math.round(val);
+                if (p < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+        document.querySelectorAll(".copy-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const code = btn.parentElement.querySelector(".terminal-code").innerText;
+
+                await navigator.clipboard.writeText(code);
+
+                // animation
+                btn.classList.add("copied");
+                const original = btn.innerText;
+                btn.innerText = "Copied ✓";
+
+                setTimeout(() => {
+                    btn.classList.remove("copied");
+                    btn.innerText = original;
+                }, 1200);
+            });
+        });
+        /* ─── SCROLL REVEAL ──────────────────────── */
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    e.target.querySelectorAll('.counter').forEach(animateCounter);
+                    observer.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.08 });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        document.querySelectorAll('.hero .counter').forEach(el => {
+            setTimeout(() => animateCounter(el), 600);
+        });
+
+        /*back to top*/
+
+        document.getElementById('backToTop').onclick = () => {
+            document.getElementById('top').scrollIntoView({
+                behavior: 'smooth'
+            });
+        };
+        const btn = document.getElementById('backToTop');
+
+        window.addEventListener('scroll', () => {
+            btn.classList.toggle('show', window.scrollY > 300);
+        });
+
+        btn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+
+</body>
+
+</html>
